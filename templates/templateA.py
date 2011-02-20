@@ -12,7 +12,7 @@ import ConfigParser, cPickle, gzip, numpy, time, optparse, os
 
 import theano
 import theano.tensor as TT
-import theano.linalg
+import theano_linalg
 from theano.gof.link import LazyLinker
 from theano import function, Mode
 
