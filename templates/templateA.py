@@ -264,7 +264,6 @@ def jobman(_options, channel = None):
                                         , h0: test_h0
                                        } )
 
-
     wout_u, wout_t = wout_set.get_whole_tensors()
 
 
