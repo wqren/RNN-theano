@@ -284,8 +284,12 @@ def jobman(_options, channel = None):
         Y_t = Y_tm1 + TT.dot(h_t[-1], t_t.T)
         return H_t, Y_t
 
-    H_0 = theano.shared(numpy.zeros((o['nhid'], o['nhid'])), name='H0')
-    Y_0 = theano.shared(numpy.zeros((o['nhid'], o['n_outs'])), name='Y0')
+    H_0 = theano.shared(numpy.zeros((o['nhid'], o['nhid'])
+                                   , dtype = theano.config.floatX)
+                        , name='H0')
+    Y_0 = theano.shared(numpy.zeros((o['nhid'], o['n_outs'])
+                                    , dtype = theano.config.floatX)
+                        , name='Y0')
     all_u = TT.tensor4('whole_u')
     all_t = TT.tensor3('whole_t')
     [H,Y], _ = theano.scan(
@@ -295,11 +299,12 @@ def jobman(_options, channel = None):
         , non_sequences = [W_hh, W_ux, TT.shape_padright(b), h0]
         , name = 'wiener_hopf_fn'
         )
-    length = all_u.shape[0]*all_u.shape[3]
+    length = TT.cast(all_u.shape[0]*all_u.shape[3]
+                     , dtype = theano.config.floatX)
     H = H[-1]/length
     Y = Y[-1]/length
-    H = H + o['wiener_lambda']*TT.eye(o['nhid'])
-    W_hy_solve = theano.linalg.solve(H, Y).T
+    H = H + floatX(o['wiener_lambda'])*TT.eye(o['nhid'])
+    W_hy_solve = theano_linalg.solve(H, Y).T
     wout = theano.function([idx], []
                            , mode = mode
                            , updates = {W_hy: W_hy_solve }
