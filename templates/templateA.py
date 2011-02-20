@@ -307,8 +307,9 @@ def jobman(_options, channel = None):
                                        ,  all_t: wout_t
                                        , h0: wout_h0
                                       } )
-    theano.printing.pydotprint(train, 'train.png', high_contrast=True)
+
     '''
+    theano.printing.pydotprint(train, 'train.png', high_contrast=True)
     for idx, o in enumerate(train.maker.env.outputs):
         if o.owner.op.__class__.__name__ == 'Cond':
             theano.printing.pydotprint_variables([o.owner.inputs[1]]
