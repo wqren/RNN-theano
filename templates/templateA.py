@@ -168,6 +168,9 @@ def jobman(_options, channel = None):
         r = TT.mean( abs(TT.log(norm_t)), axis=1).sum()
     elif o['reg_cost'] == 'each':
         r = TT.mean( abs(TT.log(ratios)), axis=1).sum()
+    elif o['reg_cost'] == 'product2':
+        ratios2 = TT.switch(TT.ge(z2[-1],1e-7), TT.sqrt(z2/z2[-1]), my1)
+        r = TT.mean( abs(TT.log(ratios2)), axis=1).sum()
 
     gu = TT.grad(y[-1].sum(), u)
 
