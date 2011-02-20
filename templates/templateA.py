@@ -392,6 +392,18 @@ def jobman(_options, channel = None):
         avg_train_reg[jdx]  /= n_train
         avg_train_norm[jdx] /= n_train
         st = time.time()
+
+        if o['wout_pinv'] and (idx%o['test_step'] == 0):
+            wout_set.refresh()
+            print ( '* Re-computing W_hy using closed-form '
+                   'regularized wiener hopf formula')
+            st = time.time()
+            wout(0)
+            ed = time.time()
+            print '** It took ', ed-st,'secs'
+            print '** Average weight', abs(W_hy.value).mean()
+
+
         valid_set.refresh()
         st = time.time()
         for k in xrange(n_valid):
@@ -438,15 +450,6 @@ def jobman(_options, channel = None):
                 test_pos    += 1
                 if test_pos >= o['max_storage']:
                     test_pos = test_pos - o['go_back']
-                if o['wout_pinv'] and (n_test_runs%o['test_step'] == 0):
-                    wout_set.refresh()
-                    print ( '* Re-computing W_hy using closed-form '
-                           'regularized wiener hopf formula')
-                    st = time.time()
-                    wout(0)
-                    ed = time.time()
-                    print '** It took ', ed-st,'secs'
-                    print '** Average weight', abs(W_hy.value).mean()
 
                 test_err  = []
                 test_reg  = []
