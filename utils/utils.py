@@ -36,13 +36,19 @@ def parse_input_arguments(_options, default = 'mainrc'):
 
     for k,v in o.iteritems():
         if k in _options and _options[k] is not None:
-            o[k] = _options[k]
-            print k,v, _options[k]
+            nw_val = _options[k]
+            if type(nw_val) is str and nw_val.startswith('str:'):
+                nw_val = eval(nw_val[4:])
+            o[k] = nw_val
+            print k,v, nw_val
         else:
             o[k] = eval(v)
     for k,v in _options.iteritems():
         if k not in o:
-            o[k] = v
+            nw_val = v
+            if type(nw_val) is str and nw_val.startswith('str:'):
+                nw_val = eval(nw_val[4:])
+            o[k] = nw_val
     return o
 
 def floatX(x):
