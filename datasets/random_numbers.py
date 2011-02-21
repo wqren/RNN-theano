@@ -78,9 +78,9 @@ class random_numbers(theano.Op):
                                  , self.n_outs
                                  , self.n_ins
                                  , self.batch_size))
-           self.data_t = self.data_u[:,:self.n_outs].squeeze()
-           if len(self.data_t.shape) == 2:
-               self.data_t = self.data_t.reshape((1,)+self.data_t.shape)
+           self.data_t = self.data_u[:,:self.n_outs,0,:]
+           #if len(self.data_t.shape) == 2:
+           #    self.data_t = self.data_t.reshape((1,)+self.data_t.shape)
            if self.noise > 0 :
                 self.data_u = self.data_u + self.rng.uniform(
                     low = -self.noise
