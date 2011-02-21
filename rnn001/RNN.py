@@ -151,7 +151,7 @@ def jobman(_options, channel = None):
         trng = TT.shared_randomstreams.RandomStreams(rng.randint(1e6))
         proj = trng.uniform(size = h[-1].shape)
         if o['sum_h2'] > 0:
-            proj[o['sum_h2']:] = 0.
+            proj[o['sum_h2']:,:] = 0.
         cost = TT.sum(proj*h[-1])
 
     z,gh = TT.grad(cost, [init_h, h])
