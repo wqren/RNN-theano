@@ -93,7 +93,7 @@ def sgd_qn(parameters,cost=None,gradients=None, stop=None,
     updates[count] = ifelse(TT.le(count,my0),myskip,count - my1)
 
     for b,ratio in zip(b_list,the_ratios):
-        updates[b] = ifelse(T.eq(updateB,my1),
+        updates[b] = ifelse(TT.eq(updateB,my1),
                                     b / (my1 + skip * b * ratio),
                                     b)
 
