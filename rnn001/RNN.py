@@ -334,7 +334,7 @@ def jobman(_options, channel = None):
 
 
     data = {}
-    fix_len = int(o['NN']/o['small_step'])
+    fix_len = o['max_storage_numpy']#int(o['NN']/o['small_step'])
     avg_train_err  = numpy.zeros((o['small_step'],o['n_outs']))
     avg_train_reg  = numpy.zeros((o['small_step'],))
     avg_train_norm = numpy.zeros((o['small_step'],))
@@ -379,6 +379,7 @@ def jobman(_options, channel = None):
 
     valid_set.refresh()
     test_set.refresh()
+    kdx = 0
     for idx in xrange(int(o['NN'])):
         jdx = idx%o['small_step']
         avg_train_err[jdx,:] = 0
@@ -431,7 +432,18 @@ def jobman(_options, channel = None):
         avg_valid_reg[jdx]  /= n_valid
         avg_valid_norm[jdx] /= n_valid
         if idx > o['small_step'] and idx%o['small_step'] == 0:
-            kdx = int(idx /o['small_step'])
+            kdx += 1
+            if kdx > o['max_storage_numpy']:
+                kdx = o['max_storage_numpy']//3
+                data['train_err'][kdx:] = -1.
+                data['valid_err'][kdx:] = -1.
+                data['train_reg'][kdx:] = -1.
+                data['valid_reg'][kdx:] = -1.
+                data['train_norm'][kdx:] = 0.
+                data['valid_norm'][kdx:] = 0.
+
+            data['steps'] = idx
+
             data['train_err'][kdx]  = avg_train_err.mean()
             data['valid_err'][kdx]  = avg_valid_err.mean()
             data['train_reg'][kdx]  = avg_train_reg.mean()
@@ -464,13 +476,13 @@ def jobman(_options, channel = None):
                 if test_pos >= o['max_storage']:
                     test_pos = test_pos - o['go_back']
 
+
+
                 test_err  = []
                 test_reg  = []
                 test_norm = []
                 test_y    = []
-                test_z    = []
                 test_t    = []
-                test_h    = []
                 test_u    = []
                 test_gu   = []
 
@@ -482,16 +494,16 @@ def jobman(_options, channel = None):
                     test_err   += [rval[0]]
                     test_reg   += [rval[1]]
                     test_norm  += [rval[2]]
-                    test_z     += [rval[7]]
+                    test_z     = rval[7]
                     test_y     += [rval[8]]
-                    test_h     += [rval[9]]
+                    test_h     = rval[9]
                     test_u     += [rval[10]]
                     test_gu    += [rval[11]]
                     test_t     += [rval[12]]
                 data['y'][test_pos]         = [ test_y    ]
-                data['z'][test_pos]         = [ test_z    ]
+                data['z']        = test_z
                 data['t'][test_pos]         = [ test_t    ]
-                data['h'][test_pos]         = [ test_h    ]
+                data['h']        = test_h
                 data['u'][test_pos]         = [ test_u    ]
                 data['gu'][test_pos]        = [ test_gu   ]
                 data['test_err'][test_pos]  = [ test_err  ]
