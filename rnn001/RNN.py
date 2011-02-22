@@ -396,7 +396,7 @@ def jobman(_options, channel = None):
         st = time.time()
         for k in xrange(o['task_train_batches']):
             rval = train(k)
-            print '[',idx,'][',k,'/',n_train,'][train]', rval[0].mean(), \
+            print '[',idx,'/',patience,'][',k,'/',n_train,'][train]', rval[0].mean(), \
                     rval[1], rval[2]
             avg_train_err[jdx,:]  += rval[0]
             avg_train_reg[jdx]  += rval[1]
@@ -422,7 +422,7 @@ def jobman(_options, channel = None):
         st = time.time()
         for k in xrange(n_valid):
             rval = valid(k)
-            print '[',idx,'][',k,'/',n_valid,'][valid]', rval[0].mean(), \
+            print '[',idx,'/',patience,'][',k,'/',n_valid,'][valid]', rval[0].mean(), \
                     rval[1], rval[2]
             avg_valid_err[jdx]  += rval[0]
             avg_valid_reg[jdx]  += rval[1]
@@ -470,7 +470,7 @@ def jobman(_options, channel = None):
         if avg_valid_err[jdx].mean() < old_rval :
 
             patience += o['patience_incr']
-            if avg_valid_err[jdx].mean() < old_rval*0.99:
+            if avg_valid_err[jdx].mean() < old_rval*0.997:
                 n_test_runs += 1
                 test_pos    += 1
                 if test_pos >= o['max_storage']:
