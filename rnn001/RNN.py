@@ -481,10 +481,6 @@ def jobman(_options, channel = None):
                 test_err  = []
                 test_reg  = []
                 test_norm = []
-                test_y    = []
-                test_t    = []
-                test_u    = []
-                test_gu   = []
 
 
                 for k in xrange(n_test):
@@ -494,29 +490,29 @@ def jobman(_options, channel = None):
                     test_err   += [rval[0]]
                     test_reg   += [rval[1]]
                     test_norm  += [rval[2]]
-                    test_z     = rval[7]
-                    test_y     += [rval[8]]
-                    test_h     = rval[9]
-                    test_u     += [rval[10]]
-                    test_gu    += [rval[11]]
-                    test_t     += [rval[12]]
-                data['y'][test_pos]         = [ test_y    ]
-                data['z']        = test_z
-                data['t'][test_pos]         = [ test_t    ]
-                data['h']        = test_h
-                data['u'][test_pos]         = [ test_u    ]
-                data['gu'][test_pos]        = [ test_gu   ]
-                data['test_err'][test_pos]  = [ test_err  ]
-                data['test_reg'][test_pos]  = [ test_reg  ]
-                data['test_norm'][test_pos] = [ test_norm ]
-                data['W_hh'][test_pos]      = [ rval[3]   ]
-                data['W_ux'][test_pos]      = [ rval[4]   ]
-                data['W_hy'][test_pos]      = [ rval[5]   ]
-                data['b'][test_pos]         = [ rval[6]   ]
-                data['b_hh'][test_pos]      = [ rval[13]  ]
-                data['b_ux'][test_pos]      = [ rval[14]  ]
-                data['b_hy'][test_pos]      = [ rval[15]  ]
-                data['b_b'][test_pos]       = [ rval[16]  ]
+                    test_z     = rval[7][:,:,:10]
+                    test_y     = rval[8][:,:,:10]
+                    test_h     = rval[9][:,:,:10]
+                    test_u     = rval[10][:,:,:10]
+                    test_gu    = rval[11][:,:,:10]
+                    test_t     = rval[12][:,:10]
+                data['y'][test_pos]         = test_y
+                data['z'][test_pos]         = test_z
+                data['t'][test_pos]         = test_t
+                data['h'][test_pos]         = test_h
+                data['u'][test_pos]         = test_u
+                data['gu'][test_pos]        = test_gu
+                data['test_err'][test_pos]  =  test_err
+                data['test_reg'][test_pos]  =  test_reg
+                data['test_norm'][test_pos] =  test_norm
+                data['W_hh'][test_pos]      =  rval[3]
+                data['W_ux'][test_pos]      =  rval[4]
+                data['W_hy'][test_pos]      =  rval[5]
+                data['b'][test_pos]         =  rval[6]
+                data['b_hh'][test_pos]      =  rval[13]
+                data['b_ux'][test_pos]      =  rval[14]
+                data['b_hy'][test_pos]      =  rval[15]
+                data['b_b'][test_pos]       =  rval[16]
 
                 cPickle.dump(data,
                     open(os.path.join(o['path'],'%s.pkl'%o['name'])
