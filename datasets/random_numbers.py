@@ -69,7 +69,7 @@ class random_numbers(theano.Op):
                   , self.n_ins
                   , self.batch_size)
 
-           self.data_u = numpy.zeros(shape)
+           self.data_u = numpy.ones(shape)*-1
            self.data_u[:,:self.n_outs] = \
                    self.rng.uniform(
                        low = self.min_val
