@@ -514,9 +514,14 @@ def jobman(_options, channel = None):
                 data['b_hy'][test_pos]      =  rval[15]
                 data['b_b'][test_pos]       =  rval[16]
 
+
                 cPickle.dump(data,
                     open(os.path.join(o['path'],'%s.pkl'%o['name'])
                          ,'wb'))
+
+                if numpy.mean(test_err) < 5e-5:
+                    patience = idx - 5
+                    break
 
             old_rval = avg_valid_err[jdx].mean()
         if idx > patience:
