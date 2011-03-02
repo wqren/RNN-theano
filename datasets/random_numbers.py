@@ -131,6 +131,11 @@ class random_numbers(theano.Op):
         shared_t = theano.shared(self.data_t)
         return shared_u, shared_t
 
+
+    def infer_shape(self, node, input_shapes):
+        return [(self.base_length, self.n_ins, self.batch_size),
+                (self.n_outs, self.batch_size)]
+
     def perform (self, node, inputs, (sequence, target)):
         if self.index < 0:
             self.refresh()

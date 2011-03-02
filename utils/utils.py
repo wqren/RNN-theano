@@ -53,3 +53,4 @@ def parse_input_arguments(_options, default = 'mainrc'):
 
 def floatX(x):
     return numpy.asarray(x, dtype = theano.config.floatX)
+
