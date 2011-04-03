@@ -182,7 +182,7 @@ def jobman(_options, channel = None):
                             floatX(1))
         r = TT.mean( abs(TT.log(ratios2)), axis=1).sum()
 
-    ratios = TT.switch(TT.ge(v2,1e-12), TT.sqrt(v1/v2), floatX(1e-12))
+    ratios = TT.switch(TT.ge(v2,1e-12), TT.sqrt(v1/v2), floatX(1e-12))[::-1]
     norm_0 = TT.ones_like(ratios[0])
     norm_t, _ = theano.scan(lambda x,y: x*y
                             , sequences = ratios
@@ -190,7 +190,7 @@ def jobman(_options, channel = None):
                             , name = 'jacobian_products'
                             , mode = mode
                            )
-    norm_term = floatX(1)+TT.sum(TT.mean(norm_t, axis=1))
+    norm_term = floatX(0.1)+TT.sum(TT.mean(norm_t, axis=1))
     gu = TT.grad(y[-1].sum(), u)
 
     if o['opt_alg'] == 'sgd':
