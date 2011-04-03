@@ -31,9 +31,12 @@ if __name__=='__main__':
     ## DEFAULT VALUES ##
     state['configfile'] ='RNN_theano/rnn_stream001/RNN_stream.ini'
     state['jobman.experiment'] = 'RNN_stream.jobman'
-    n_jobs = 0
+
+    # Starting job id
+    start_job = 0
+    num_jobs  = 60
     state['path'] = TABLE_NAME+'/'
-    for n_jobs in xrange(60):
+    for n_jobs in xrange(start_job, start_job+num_jobs):
         n = numpy.random.rand()
         #if n > 0.5:
         #state['opt_alg'] = 'sgd_qn'
@@ -51,10 +54,10 @@ if __name__=='__main__':
         state['lr'] = 10**lr * numpy.random.rand()
         state['lazy'] = False
 
-        n = numpy.random.randint(5)
+        n = 0#numpy.random.randint(5)
         if n == 0:
             state['Whh_style'] = 'orthogonal'
-            scale = (numpy.random.rand() + .2)/1.2
+            scale = 0.9+ (numpy.random.rand())/0.1
             state['Whh_properties'] = "str:{'scale': %5.2f}"%scale
         elif n == 1:
             state['Whh_style'] = 'esn'
@@ -69,19 +72,19 @@ if __name__=='__main__':
             prop = "str:{'scale':%5.2f,'sparsity' :%5.2f}"%(scale,sparse)
             state['Whh_properties'] = prop
 
-        scale  = numpy.random.rand() + .0001
+        scale  = numpy.random.rand()*10. + .0001
         sparse = (numpy.random.rand() +.01)/1.01
         prop = "str:{'scale':%5.2f,'sparsity' :%5.2f}"%(scale,sparse)
         state['Why_properties'] = prop
 
-        scale  = numpy.random.rand() + .0001
+        scale  = numpy.random.rand()*0.01 + .0001
         sparse = (numpy.random.rand() +.01)/1.01
         prop = "str:{'scale':%5.2f,'sparsity' :%5.2f}"%(scale,sparse)
         state['Wux_properties'] = prop
 
         state['nhid'] = numpy.random.randint(120)+4
         nhid = state['nhid']
-        n = numpy.random.randint(5)
+        n = 0 #numpy.random.randint(5)
         if n < 3:
             state['reg_projection'] = 'err'
             n2 = numpy.random.randint(4)
@@ -90,7 +93,7 @@ if __name__=='__main__':
             else:
                 state['sum_h'] = 0
             state['sum_h2'] = 0
-        elif n == 3:
+        elif n == 4:
 
             n2 = numpy.random.randint(4)
             if n2 == 0:
@@ -127,13 +130,13 @@ if __name__=='__main__':
         else:
             state['win_reg'] = 'str:False'
 
-        n = 5 #numpy.random.randint(3)
+        n = 2 #numpy.random.randint(3)
         if n == 0:
             state['wout_pinv'] = 'str:True'
         else:
             state['wout_pinv'] = 'str:False'
 
-        n = numpy.random.randint(5)
+        n = numpy.random.randint(4)
         if n == 0:
             state['alpha'] = 0.
         else:
@@ -150,10 +153,10 @@ if __name__=='__main__':
 
         expo = -numpy.random.randint(3)-1
         val = numpy.random.rand()*(10**expo)
-        #state['wiener_lambda'] = val
-        #state['test_step'] = 10**numpy.random.randint(6)
+        state['wiener_lambda'] = val
+        state['test_step'] = int(numpy.random.rand()*10**numpy.random.randint(6))
 
-        n = numpy.random.randint(4)
+        n = numpy.random.randint(3)
         if n == 0:
             state['momentum'] = 'str:None'
         else:

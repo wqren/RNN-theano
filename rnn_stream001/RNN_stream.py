@@ -371,7 +371,10 @@ def jobman(_options, channel = None):
     data['b_hy']      = [None]*o['max_storage']
     data['b_hh']      = [None]*o['max_storage']
     data['b_b']       = [None]*o['max_storage']
+    storage_exceeded  = False
     stop = False
+
+
 
     old_rval = numpy.inf
     patience = o['patience']
@@ -393,6 +396,12 @@ def jobman(_options, channel = None):
     if o['alpha_scheme']:
         alpha_r = float(o['alpha_scheme'][1] - o['alpha_scheme'][0])
 
+    st = time.time()
+    if channel:
+        try:
+            channel.save()
+        except:
+            pass
     for idx in xrange(int(o['NN'])):
         if o['lr_scheme'] and idx > o['lr_scheme'][0]:
             lr_v = floatX(o['lr'] * 1./(1.+ (idx - o['lr_scheme'][0])*lr_f))
@@ -415,11 +424,23 @@ def jobman(_options, channel = None):
         avg_valid_err[jdx,:] = 0
         avg_valid_reg[jdx]   = 0
         avg_valid_norm[jdx]  = 0
+
+        if o['wout_pinv'] and (idx%o['test_step'] == 0):
+            wout_set.refresh()
+            print ( '* Re-computing W_hy using closed-form '
+                   'regularized wiener hopf formula')
+            st_wout = time.time()
+            wout(0)
+            ed_wout = time.time()
+            print '** It took ', ed_wout-st_wout,'secs'
+            print '** Average weight', abs(W_hy.get_value(borrow=True)).mean()
+
+
+
         print '*Re-generate training set '
-        st = time.time()
+        st_gen = time.time()
         train_set.refresh()
-        print '**Generation took', time.time() - st, 'secs'
-        st = time.time()
+        print '**Generation took', time.time() - st_gen, 'secs'
         for k in xrange(o['task_train_batches']):
             rval = train(train_set.data_u[k]
                          ,train_set.data_t[k], lr_v, alpha_v)
@@ -435,19 +456,7 @@ def jobman(_options, channel = None):
         avg_train_norm[jdx] /= n_train
         st = time.time()
 
-        if o['wout_pinv'] and (idx%o['test_step'] == 0):
-            wout_set.refresh()
-            print ( '* Re-computing W_hy using closed-form '
-                   'regularized wiener hopf formula')
-            st = time.time()
-            wout(0)
-            ed = time.time()
-            print '** It took ', ed-st,'secs'
-            print '** Average weight', abs(W_hy.get_value(borrow=True)).mean()
 
-
-
-        st = time.time()
         for k in xrange(n_valid):
             #import GPUscan.ipdb; GPUscan.ipdb.set_trace()
             rval = valid(valid_set.data_u[k],valid_set.data_t[k])
@@ -464,15 +473,18 @@ def jobman(_options, channel = None):
             kdx += 1
             if kdx >= o['max_storage_numpy']:
                 kdx = o['max_storage_numpy']//3
-                data['train_err'][kdx:] = -1.
-                data['valid_err'][kdx:] = -1.
-                data['train_reg'][kdx:] = -1.
-                data['valid_reg'][kdx:] = -1.
-                data['train_norm'][kdx:] = 0.
-                data['valid_norm'][kdx:] = 0.
+                storage_exceeded = True
+                #data['train_err'][kdx:] = -1.
+                #data['valid_err'][kdx:] = -1.
+                #data['train_reg'][kdx:] = -1.
+                #data['valid_reg'][kdx:] = -1.
+                #data['train_norm'][kdx:] = 0.
+                #data['valid_norm'][kdx:] = 0.
+
 
             data['steps'] = idx
-
+            data['kdx']   = kdx
+            data['storage_exceeded'] = storage_exceeded
             data['train_err'][kdx]  = avg_train_err.mean()
             data['valid_err'][kdx]  = avg_valid_err.mean()
             data['train_reg'][kdx]  = avg_train_reg.mean()
@@ -494,6 +506,12 @@ def jobman(_options, channel = None):
                     channel.save()
                 except:
                     pass
+
+            cPickle.dump(data,
+                open(os.path.join(
+                    configs.results_folder(),
+                    o['path'],'%s_backup.pkl'%o['name'])
+                     ,'wb'))
 
         print '** ', avg_valid_err[jdx].mean(), ' < ', old_rval, ' ? '
         if avg_valid_err[jdx].mean() < old_rval :
@@ -525,6 +543,7 @@ def jobman(_options, channel = None):
                     test_u     = rval[10][:,:,:10]
                     test_gu    = rval[11][:,:,:10]
                     test_t     = rval[12][:,:10]
+                data['test_pos'][test_pos]  = idx
                 data['y'][test_pos]         = test_y
                 data['z'][test_pos]         = test_z
                 data['t'][test_pos]         = test_t
