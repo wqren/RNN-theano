@@ -9,6 +9,8 @@ import ConfigParser, cPickle, gzip, numpy, time, optparse, os
 
 import theano
 import theano.tensor as TT
+import configs
+import os
 
 def plot_scan_inner_graphs(fn, path, base_name = '', **kwargs):
     for o in fn.maker.env.toposort():
@@ -28,9 +30,11 @@ def parse_input_arguments(_options, default = 'mainrc'):
     config = ConfigParser.ConfigParser()
     config.optionxform = str
     if 'configfile' in _options and _options['configfile'] is not None:
-        config.readfp(open(_options['configfile']))
+        config.readfp(open(os.path.join(configs.home(),
+                            _options['configfile'])))
     else:
-        config.readfp(open(default))
+        config.readfp(open(os.path.join(configs.home(),
+                                        default)))
 
     o = dict( config.items('global'))
 
