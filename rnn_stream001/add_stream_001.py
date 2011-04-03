@@ -8,19 +8,20 @@
 from jobman.tools import DD
 from jobman import sql
 import numpy
+import configs
 
 # import types of architectures we want to use
-import RNN_spike
+import RNN_stream
 
 
 if __name__=='__main__':
 
-    TABLE_NAME='rnnspike001'
+    TABLE_NAME='rnnstream001'
 
     #db = sql.db('postgres://pascanur:he1enush@gershwin/pascanur_db/'+TABLE_NAME)
     db = sql.postgres_serial( user = 'pascanur',
             password='he1enush',
-            host='gershwin',
+            host=configs.get_server(),
             port = 5432,
             database='pascanur_db',
             table_prefix = TABLE_NAME)
@@ -28,8 +29,8 @@ if __name__=='__main__':
     state = DD()
 
     ## DEFAULT VALUES ##
-    state['configfile'] ='/data/lisa/exp/pascanur/repos/RNN_theano/rnn001/RNN_spike.ini'
-    state['jobman.experiment'] = 'RNN_spike.jobman'
+    state['configfile'] ='RNN_theano/rnn_stream001/RNN_stream.ini'
+    state['jobman.experiment'] = 'RNN_stream.jobman'
     n_jobs = 0
 
     for n_jobs in xrange(150):
@@ -50,7 +51,7 @@ if __name__=='__main__':
         state['lr'] = 10**lr * numpy.random.rand()
         state['lazy'] = False
 
-        n = numpy.random.randint(6)
+        n = numpy.random.randint(5)
         if n == 0:
             state['Whh_style'] = 'orthogonal'
             scale = (numpy.random.rand() + .2)/1.2
@@ -78,7 +79,7 @@ if __name__=='__main__':
         prop = "str:{'scale':%5.2f,'sparsity' :%5.2f}"%(scale,sparse)
         state['Wux_properties'] = prop
 
-        state['nhid'] = numpy.random.randint(180)
+        state['nhid'] = numpy.random.randint(120)+4
         nhid = state['nhid']
         n = numpy.random.randint(5)
         if n < 3:
@@ -139,7 +140,7 @@ if __name__=='__main__':
             lmbd = -numpy.random.randint(5)
             state['alpha'] = ((numpy.random.rand()*5.+1.)/6.)*(10**lmbd)
         state['seed'] = numpy.random.randint(2000)
-        n = numpy.random.randint(2)
+        n = 0 #numpy.random.randint(2)
         if n == 0 :
             state['n_outs'] = 1
         elif n == 1:
@@ -163,7 +164,7 @@ if __name__=='__main__':
         if n == 0:
             state['lr_scheme'] = 'str:None'
         else:
-            flat  = numpy.random.randint(1e5)
+            flat  = numpy.random.randint(9*1e4)
             decay = numpy.random.randint(200)+1
             state['lr_scheme'] = 'str:[%d,%d]'%(flat,decay)
 
@@ -172,8 +173,8 @@ if __name__=='__main__':
             state['alpha_scheme'] = 'str:None'
             state['patience'] = 1e3
         else:
-            flat = numpy.random.randint(1e3) + 1e2
-            length = numpy.random.randint(5*1e4) + 1e4
+            flat = numpy.random.randint(1e4) + 1e3
+            length = numpy.random.randint(6*1e4) + 1e4
             state['alpha_scheme'] = 'str:[%d,%d]'%(flat, length)
             state['patience'] = flat+length
 
@@ -196,7 +197,7 @@ if __name__=='__main__':
 
 
 
-        state['name'] = 'rnnspike_%03d'%n_jobs
+        state['name'] = 'rnnstream_%03d'%n_jobs
         sql.add_experiments_to_db(
             [state], db, verbose=1, force_dup =True)
 

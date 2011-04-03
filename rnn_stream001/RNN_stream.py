@@ -15,8 +15,9 @@ import theano.tensor as TT
 import theano_linalg
 import configs
 
-from theano.gof.link import LazyLinker
+#from theano.gof.link import LazyLinker
 from theano import function, Mode
+from theano.gof import vm
 
 from RNN_theano.utils.init_mat import init
 from RNN_theano.gd_methods.sgd import sgd
@@ -32,10 +33,10 @@ def jobman(_options, channel = None):
 
     ################### PARSE INPUT ARGUMENTS #######################
     o = parse_input_arguments(_options,
-                              os.path.join(configs.home(),
-                                           'RNN_theano/rnn_stream001/RNN_spike.ini'))
+                            'RNN_theano/rnn_stream001/RNN_stream.ini')
     ####################### DEFINE THE TASK #########################
 
+    mode = Mode( linker = 'cvm', optimizer = 'fast_run')
     rng = numpy.random.RandomState(o['seed'])
     train_set = spike_numbers(
                     n_outs          = o['n_outs']
@@ -97,7 +98,7 @@ def jobman(_options, channel = None):
     else:
         t  = TT.matrix('t')
     h0 = TT.matrix('h0')
-    b  = theano.shared( floatX(numpy.zeros((o['nhid']))), name='b')
+    b  = theano.shared( floatX(numpy.zeros((o['nhid'],))), name='b')
     alpha = TT.scalar('alpha')
     lr    = TT.scalar('lr')
 
@@ -127,10 +128,12 @@ def jobman(_options, channel = None):
         , outputs_info = [h0, None]
         , non_sequences = [W_hh, W_ux, W_hy, TT.shape_padright(b)]
         , name = 'recurrent_fn'
+        , mode = mode
         )
 
     init_h =h.owner.inputs[0].owner.inputs[2]
 
+    #h = theano.printing.Print('h',attrs=('shape',))(h)
     if o['error_over_all']:
         out_err = TT.mean(TT.mean((y-t)**2, axis = 0), axis=1)
         err     = out_err.mean()
@@ -151,19 +154,24 @@ def jobman(_options, channel = None):
         cost = TT.sum(proj*h[-1])
 
     z,gh = TT.grad(cost, [init_h, h])
-    z = z[:-1] -gh
+    z.name = '__z__'
+    z = z[:-1] - gh
     if o['sum_h'] > 0:
         z2 = TT.sum(z[:,:o['sum_h']]**2, axis = 1)
     else:
         z2 = TT.sum(z**2, axis = 1)
     v1 = z2[:-1]
     v2 = z2[1:]
-    ratios = TT.switch(TT.ge(v2,1e-12), TT.sqrt(v1/v2), floatX(1e20))
+    ## ## v2 = theano.printing.Print('v2')(v2)
+    # floatX(1e-14)
+    ratios = TT.switch(TT.ge(v2,1e-12), TT.sqrt(v1/v2), floatX(1))
     norm_0 = TT.ones_like(ratios[0])
     norm_t, _ = theano.scan(lambda x,y: x*y
                             , sequences = ratios
                             , outputs_info = norm_0
-                            , name = 'jacobian_products')
+                            , name = 'jacobian_products'
+                            , mode = mode
+                           )
     norm_term = TT.sum(TT.mean(norm_t, axis=1))
     if o['reg_cost'] == 'product':
         r = TT.mean( abs(TT.log(norm_t)), axis=1).sum()
@@ -171,9 +179,18 @@ def jobman(_options, channel = None):
         r = TT.mean( abs(TT.log(ratios)), axis=1).sum()
     elif o['reg_cost'] == 'product2':
         ratios2 = TT.switch(TT.ge(z2[-1],1e-12), TT.sqrt(z2/z2[-1]),
-                            floatX(1e20))
+                            floatX(1))
         r = TT.mean( abs(TT.log(ratios2)), axis=1).sum()
 
+    ratios = TT.switch(TT.ge(v2,1e-12), TT.sqrt(v1/v2), floatX(1e-12))
+    norm_0 = TT.ones_like(ratios[0])
+    norm_t, _ = theano.scan(lambda x,y: x*y
+                            , sequences = ratios
+                            , outputs_info = norm_0
+                            , name = 'jacobian_products'
+                            , mode = mode
+                           )
+    norm_term = floatX(1)+TT.sum(TT.mean(norm_t, axis=1))
     gu = TT.grad(y[-1].sum(), u)
 
     if o['opt_alg'] == 'sgd':
@@ -209,11 +226,6 @@ def jobman(_options, channel = None):
         b_Wux = extras1[2][1]
         b_Whh = extras2[2][0]
         b_b   = extras2[2][1]
-
-    if o['lazy']:
-        mode = Mode(linker=LazyLinker(), optimizer='fast_run')
-    else:
-        mode = None
 
     nhid = o['nhid']
     train_batchsize = o['task_train_batchsize']
@@ -274,6 +286,7 @@ def jobman(_options, channel = None):
                 , outputs_info = h0
                 , non_sequences = [W_hh, W_ux, b ]
                 , name = 'recurrent_fn'
+                , mode = mode
             )
             H_t = H_tm1 + TT.dot(h_t[-1], h_t[-1].T)
             Y_t = Y_tm1 + TT.dot(h_t[-1], t_t.T)
@@ -293,6 +306,7 @@ def jobman(_options, channel = None):
             , outputs_info = [H_0, Y_0]
             , non_sequences = [W_hh, W_ux, TT.shape_padright(b), h0]
             , name = 'wiener_hopf_fn'
+            , mode = mode
             )
         length = TT.cast(all_u.shape[0]*all_u.shape[3]
                          , dtype = theano.config.floatX)
@@ -307,19 +321,19 @@ def jobman(_options, channel = None):
                                            ,  all_t: wout_t
                                            , h0: wout_h0
                                           } )
-
     '''
     theano.printing.pydotprint(train, 'train.png', high_contrast=True)
-    for idx, o in enumerate(train.maker.env.outputs):
-        if o.owner.op.__class__.__name__ == 'Cond':
-            theano.printing.pydotprint_variables([o.owner.inputs[1]]
-                                                  , 'lazy%d_left.png'%idx
-                                                  , high_contrast= True)
-
-            theano.printing.pydotprint_variables([o.owner.inputs[2]]
-                                                  , 'lazy%d_right.png'%idx
-                                                  , high_contrast= True)
+    for node in train.maker.env.toposort():
+        if node.op.__class__.__name__ == 'Scan':
+            theano.printing.pydotprint(node.op.fn,
+                                       node.op.name,
+                                       high_contrast = True)
     '''
+    valid_set.refresh()
+
+    #import GPUscan.ipdb; GPUscan.ipdb.set_trace()
+    #rval = valid(valid_set.data_u[0],valid_set.data_t[0])
+
     #################### DEFINE THE MAIN LOOP #######################
 
 
@@ -379,7 +393,6 @@ def jobman(_options, channel = None):
     if o['alpha_scheme']:
         alpha_r = float(o['alpha_scheme'][1] - o['alpha_scheme'][0])
 
-
     for idx in xrange(int(o['NN'])):
         if o['lr_scheme'] and idx > o['lr_scheme'][0]:
             lr_v = floatX(o['lr'] * 1./(1.+ (idx - o['lr_scheme'][0])*lr_f))
@@ -430,12 +443,13 @@ def jobman(_options, channel = None):
             wout(0)
             ed = time.time()
             print '** It took ', ed-st,'secs'
-            print '** Average weight', abs(W_hy.value).mean()
+            print '** Average weight', abs(W_hy.get_value(borrow=True)).mean()
 
 
 
         st = time.time()
         for k in xrange(n_valid):
+            #import GPUscan.ipdb; GPUscan.ipdb.set_trace()
             rval = valid(valid_set.data_u[k],valid_set.data_t[k])
             print '[',idx,'/',patience,'][',k,'/',n_valid,'][valid]', rval[0].mean(), \
                     rval[1], rval[2]
@@ -532,7 +546,7 @@ def jobman(_options, channel = None):
 
                 cPickle.dump(data,
                     open(os.path.join(
-                        config.results_folder(),
+                        configs.results_folder(),
                         o['path'],'%s.pkl'%o['name'])
                          ,'wb'))
 
