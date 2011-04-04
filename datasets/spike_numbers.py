@@ -47,7 +47,9 @@ class spike_numbers(theano.Op):
 
     def make_node(self, idx):
         input_seq = TT.tensor3( name = 'input', dtype = self.dtype)
+        input_seq.tag.shape = [ self.T, self.n_ins, self.batch_size ]
         target    = TT.matrix( name = 'target', dtype = self.dtype)
+        target.tag.shape = [ self.n_outs, self.batch_size ]
         return theano.Apply(self, [idx], [input_seq, target])
 
     def __str__(self):
@@ -102,8 +104,10 @@ class spike_numbers(theano.Op):
     def get_whole_tensors(self):
         if self.data_u is None or self.data_t is None:
             self.refresh()
-        shared_u = theano.shared(self.data_u)
-        shared_t = theano.shared(self.data_t)
+        shared_u = theano.shared(self.data_u, borrow = True)
+        shared_u.tag.shape = list(self.data_u.shape)
+        shared_t = theano.shared(self.data_t, borrow = True)
+        shared_t.tag.shape = list(self.data_t.shape)
         return shared_u, shared_t
 
 

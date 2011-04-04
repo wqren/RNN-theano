@@ -9,7 +9,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import numpy
 import theano
-
+import utils
 
 
 def init(n,m, name,style, properties = None, rng = None):
@@ -25,7 +25,7 @@ def init(n,m, name,style, properties = None, rng = None):
         if 'scale' in properties:
             scale = properties['scale']
         u      = numpy.asarray(u*scale, dtype = theano.config.floatX)
-        return theano.shared( u, name = name)
+        return utils.shared_shape( u, name = name)
     elif style == 'random':
         scale = 1./n
         if 'scale' in properties:
@@ -38,7 +38,7 @@ def init(n,m, name,style, properties = None, rng = None):
         values[positions[:int(n*m*sparsity)]] = 0.
         values = values.reshape((n,m))
         values = numpy.asarray(values, theano.config.floatX)
-        return theano.shared(values, name)
+        return utils.shared_shape(values, name)
     elif style == 'esn':
         assert n == m
         trials    = 0
@@ -67,7 +67,7 @@ def init(n,m, name,style, properties = None, rng = None):
                 if trails > 20:
                     raise ValueError('Could not generate ESN weights')
         values =  numpy.asarray(values, dtype = theano.config.floatX)
-        return theano.shared(values, name = name)
+        return utils.shared_shape(values, name = name)
 
 
 

@@ -58,3 +58,8 @@ def parse_input_arguments(_options, default = 'mainrc'):
 def floatX(x):
     return numpy.asarray(x, dtype = theano.config.floatX)
 
+def shared_shape(x,*args, **kwargs):
+    sx = theano.shared(x,*args, **kwargs)
+    sx.tag.shape = x.shape
+    return sx
+

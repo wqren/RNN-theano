@@ -14,6 +14,7 @@ import theano
 import theano.tensor as TT
 import theano_linalg
 import configs
+import copy
 
 #from theano.gof.link import LazyLinker
 from theano import function, Mode
@@ -22,7 +23,8 @@ from theano.gof import vm
 from RNN_theano.utils.init_mat import init
 from RNN_theano.gd_methods.sgd import sgd
 from RNN_theano.gd_methods.sgd_qn import sgd_qn
-from RNN_theano.utils.utils import parse_input_arguments, floatX
+from RNN_theano.utils.utils import parse_input_arguments, floatX,\
+                                shared_shape
 from RNN_theano.datasets.spike_numbers import spike_numbers
 
 # Using the correct dtype for constatsns
@@ -98,7 +100,7 @@ def jobman(_options, channel = None):
     else:
         t  = TT.matrix('t')
     h0 = TT.matrix('h0')
-    b  = theano.shared( floatX(numpy.zeros((o['nhid'],))), name='b')
+    b  = shared_shape( floatX(numpy.zeros((o['nhid'],))), name='b')
     alpha = TT.scalar('alpha')
     lr    = TT.scalar('lr')
 
@@ -233,24 +235,31 @@ def jobman(_options, channel = None):
     test_batchsize = o['task_test_batchsize']
     wout_batchsize = o['task_wout_batchsize']
 
-    train_h0 = theano.shared(floatX(numpy.zeros((nhid,train_batchsize))))
-    valid_h0 = theano.shared(floatX(numpy.zeros((nhid,valid_batchsize))))
-    test_h0  = theano.shared(floatX(numpy.zeros((nhid,test_batchsize))))
-    wout_h0  = theano.shared(floatX(numpy.zeros((nhid,wout_batchsize))))
+    train_h0 = shared_shape(floatX(numpy.zeros((nhid,train_batchsize))))
+    valid_h0 = shared_shape(floatX(numpy.zeros((nhid,valid_batchsize))))
+    test_h0  = shared_shape(floatX(numpy.zeros((nhid,test_batchsize))))
+    wout_h0  = shared_shape(floatX(numpy.zeros((nhid,wout_batchsize))))
     idx = TT.iscalar('idx')
     train_u, train_t = train_set(idx)
-    train = theano.function([u,t,lr,alpha], [out_err, r, norm_term]
+    u.tag.shape = copy.copy(train_u.tag.shape)
+    t.tag.shape = copy.copy(train_t.tag.shape)
+    train = theano.function([u, t, lr, alpha], [out_err, r, norm_term]
                             , updates = updates
                             , mode = mode
                             , givens = { h0: train_h0
                                        } )
+
     valid_u, valid_t = valid_set(idx)
+    u.tag.shape = copy.copy(valid_u.tag.shape)
+    t.tag.shape = copy.copy(valid_t.tag.shape)
     valid = theano.function([u,t], [out_err, r, norm_term]
                             , mode = mode
                             , givens = { h0: valid_h0
                                        } )
 
     test_u, test_t = test_set(idx)
+    u.tag.shape = copy.copy(test_u.tag.shape)
+    t.tag.shape = copy.copy(test_t.tag.shape)
     test = theano.function([u,t], [out_err
                                    , r
                                    , norm_term
@@ -292,10 +301,10 @@ def jobman(_options, channel = None):
             Y_t = Y_tm1 + TT.dot(h_t[-1], t_t.T)
             return H_t, Y_t
 
-        H_0 = theano.shared(numpy.zeros((o['nhid'], o['nhid'])
+        H_0 = shared_shape(numpy.zeros((o['nhid'], o['nhid'])
                                        , dtype = theano.config.floatX)
                             , name='H0')
-        Y_0 = theano.shared(numpy.zeros((o['nhid'], o['n_outs'])
+        Y_0 = shared_shape(numpy.zeros((o['nhid'], o['n_outs'])
                                         , dtype = theano.config.floatX)
                             , name='Y0')
         all_u = TT.tensor4('whole_u')
@@ -321,13 +330,41 @@ def jobman(_options, channel = None):
                                            ,  all_t: wout_t
                                            , h0: wout_h0
                                           } )
-    '''
-    theano.printing.pydotprint(train, 'train.png', high_contrast=True)
-    for node in train.maker.env.toposort():
+    theano.printing.pydotprint(train, 'train.png', high_contrast=True,
+                               with_ids= True)
+    for idx,node in enumerate(train.maker.env.toposort()):
         if node.op.__class__.__name__ == 'Scan':
             theano.printing.pydotprint(node.op.fn,
-                                       node.op.name,
-                                       high_contrast = True)
+                                       ('train%d_'%idx)+node.op.name,
+                                       high_contrast = True,
+                                       with_ids = True)
+    '''
+    theano.printing.pydotprint(train, 'valid.png', high_contrast=True,
+                              with_ids = True)
+    for idx,node in enumerate(train.maker.env.toposort()):
+        if node.op.__class__.__name__ == 'Scan':
+            theano.printing.pydotprint(node.op.fn,
+                                       ('valid%d_'%idx)+node.op.name,
+                                       high_contrast = True,
+                                      with_ids = True)
+    theano.printing.pydotprint(train, 'test.png', high_contrast=True,
+                              with_ids = True)
+    for idx,node in enumerate(train.maker.env.toposort()):
+        if node.op.__class__.__name__ == 'Scan':
+            theano.printing.pydotprint(node.op.fn,
+                                       ('test%d_'%idx)+node.op.name,
+                                       high_contrast = True,
+                                      with_ids = True)
+    if o['wout_pinv']:
+        theano.printing.pydotprint(train, 'wout.png', high_contrast=True,
+                                  with_ids = True)
+        for idx,node in enumerate(train.maker.env.toposort()):
+            if node.op.__class__.__name__ == 'Scan':
+                theano.printing.pydotprint(node.op.fn,
+                                       ('wout%d_'%idx)+node.op.name,
+                                       high_contrast = True,
+                                          with_ids= True)
+
     '''
     valid_set.refresh()
 
@@ -355,6 +392,7 @@ def jobman(_options, channel = None):
     data['valid_norm'] = numpy.zeros((fix_len,))
 
     data['test_err']  = [None]*o['max_storage']
+    data['test_idx']  = [None]*o['max_storage']
     data['test_reg']  = [None]*o['max_storage']
     data['test_norm'] = [None]*o['max_storage']
     data['y']         = [None]*o['max_storage']
@@ -543,7 +581,8 @@ def jobman(_options, channel = None):
                     test_u     = rval[10][:,:,:10]
                     test_gu    = rval[11][:,:,:10]
                     test_t     = rval[12][:,:10]
-                data['test_pos'][test_pos]  = idx
+                data['test_idx'][test_pos]  = idx
+                data['test_pos']            = test_pos
                 data['y'][test_pos]         = test_y
                 data['z'][test_pos]         = test_z
                 data['t'][test_pos]         = test_t
