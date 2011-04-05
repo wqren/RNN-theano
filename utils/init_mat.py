@@ -12,7 +12,7 @@ import theano
 import utils
 
 
-def init(n,m, name,style, properties = None, rng = None):
+def init(n,m, name,style, properties = None, rng = None, mask = None):
     n = int(n)
     m = int(m)
     if rng == None:
@@ -66,6 +66,8 @@ def init(n,m, name,style, properties = None, rng = None):
                 trails += 1
                 if trails > 20:
                     raise ValueError('Could not generate ESN weights')
+        if mask:
+            values = values * mask
         values =  numpy.asarray(values, dtype = theano.config.floatX)
         return utils.shared_shape(values, name = name)
 

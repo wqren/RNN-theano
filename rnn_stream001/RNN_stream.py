@@ -100,7 +100,10 @@ def jobman(_options, channel = None):
     else:
         t  = TT.matrix('t')
     h0 = TT.matrix('h0')
-    b  = shared_shape( floatX(numpy.zeros((o['nhid'],))), name='b')
+    b  = shared_shape( floatX(numpy.random.uniform(size=(o['nhid'],),
+                                                   low =-o['Wux_properties']['scale'],
+                                                   high= o['Wux_properties']['scale'])))
+
     alpha = TT.scalar('alpha')
     lr    = TT.scalar('lr')
 
@@ -232,8 +235,8 @@ def jobman(_options, channel = None):
     nhid = o['nhid']
     train_batchsize = o['task_train_batchsize']
     valid_batchsize = o['task_valid_batchsize']
-    test_batchsize = o['task_test_batchsize']
-    wout_batchsize = o['task_wout_batchsize']
+    test_batchsize  = o['task_test_batchsize']
+    wout_batchsize  = o['task_wout_batchsize']
 
     train_h0 = shared_shape(floatX(numpy.zeros((nhid,train_batchsize))))
     valid_h0 = shared_shape(floatX(numpy.zeros((nhid,valid_batchsize))))
@@ -330,6 +333,8 @@ def jobman(_options, channel = None):
                                            ,  all_t: wout_t
                                            , h0: wout_h0
                                           } )
+
+    '''
     theano.printing.pydotprint(train, 'train.png', high_contrast=True,
                                with_ids= True)
     for idx,node in enumerate(train.maker.env.toposort()):
@@ -338,7 +343,7 @@ def jobman(_options, channel = None):
                                        ('train%d_'%idx)+node.op.name,
                                        high_contrast = True,
                                        with_ids = True)
-    '''
+
     theano.printing.pydotprint(train, 'valid.png', high_contrast=True,
                               with_ids = True)
     for idx,node in enumerate(train.maker.env.toposort()):
@@ -419,8 +424,8 @@ def jobman(_options, channel = None):
     n_train = o['task_train_batches']
     n_valid = o['task_valid_batches']
     n_test  = o['task_test_batches']
-    n_test_runs = -1
-    test_pos    = -1
+    n_test_runs = 0
+    test_pos    = 0
 
     valid_set.refresh()
     test_set.refresh()
@@ -483,7 +488,7 @@ def jobman(_options, channel = None):
             rval = train(train_set.data_u[k]
                          ,train_set.data_t[k], lr_v, alpha_v)
             print '[',idx,'/',patience,'][',k,'/',n_train,'][train]', rval[0].mean(), \
-                    rval[1], rval[2]
+                    rval[1], rval[2], (1./rval[2])*lr_v, alpha_v
             avg_train_err[jdx,:]  += rval[0]
             avg_train_reg[jdx]  += rval[1]
             avg_train_norm[jdx] += rval[2]
@@ -496,7 +501,6 @@ def jobman(_options, channel = None):
 
 
         for k in xrange(n_valid):
-            #import GPUscan.ipdb; GPUscan.ipdb.set_trace()
             rval = valid(valid_set.data_u[k],valid_set.data_t[k])
             print '[',idx,'/',patience,'][',k,'/',n_valid,'][valid]', rval[0].mean(), \
                     rval[1], rval[2]
@@ -512,13 +516,6 @@ def jobman(_options, channel = None):
             if kdx >= o['max_storage_numpy']:
                 kdx = o['max_storage_numpy']//3
                 storage_exceeded = True
-                #data['train_err'][kdx:] = -1.
-                #data['valid_err'][kdx:] = -1.
-                #data['train_reg'][kdx:] = -1.
-                #data['valid_reg'][kdx:] = -1.
-                #data['train_norm'][kdx:] = 0.
-                #data['valid_norm'][kdx:] = 0.
-
 
             data['steps'] = idx
             data['kdx']   = kdx
@@ -545,6 +542,43 @@ def jobman(_options, channel = None):
                 except:
                     pass
 
+                test_err  = []
+                test_reg  = []
+                test_norm = []
+
+
+                for k in xrange(n_test):
+                    rval = test(test_set.data_u[k], test_set.data_t[k])
+                    print '[',idx,'][',k,'/',n_test,'][test]',rval[0].mean()\
+                        , rval[1], rval[2]
+                    test_err   += [rval[0]]
+                    test_reg   += [rval[1]]
+                    test_norm  += [rval[2]]
+                    test_z     = rval[7][:,:,:10]
+                    test_y     = rval[8][:,:,:10]
+                    test_h     = rval[9][:,:,:10]
+                    test_u     = rval[10][:,:,:10]
+                    test_gu    = rval[11][:,:,:10]
+                    test_t     = rval[12][:,:10]
+                data['test_idx'][test_pos]  = idx
+                data['test_pos']            = test_pos
+                data['y'][test_pos]         = test_y
+                data['z'][test_pos]         = test_z
+                data['t'][test_pos]         = test_t
+                data['h'][test_pos]         = test_h
+                data['u'][test_pos]         = test_u
+                data['gu'][test_pos]        = test_gu
+                data['test_err'][test_pos]  =  test_err
+                data['test_reg'][test_pos]  =  test_reg
+                data['test_norm'][test_pos] =  test_norm
+                data['W_hh'][test_pos]      =  rval[3]
+                data['W_ux'][test_pos]      =  rval[4]
+                data['W_hy'][test_pos]      =  rval[5]
+                data['b'][test_pos]         =  rval[6]
+                data['b_hh'][test_pos]      =  rval[13]
+                data['b_ux'][test_pos]      =  rval[14]
+                data['b_hy'][test_pos]      =  rval[15]
+                data['b_b'][test_pos]       =  rval[16]
             cPickle.dump(data,
                 open(os.path.join(
                     configs.results_folder(),
@@ -556,10 +590,7 @@ def jobman(_options, channel = None):
 
             patience += o['patience_incr']
             if avg_valid_err[jdx].mean() < old_rval*0.997:
-                n_test_runs += 1
-                test_pos    += 1
-                if test_pos >= o['max_storage']:
-                    test_pos = test_pos - o['go_back']
+
 
 
 
@@ -607,7 +638,10 @@ def jobman(_options, channel = None):
                         configs.results_folder(),
                         o['path'],'%s.pkl'%o['name'])
                          ,'wb'))
-
+                n_test_runs += 1
+                test_pos    += 1
+                if test_pos >= o['max_storage']:
+                    test_pos = test_pos - o['go_back']
                 if numpy.mean(test_err) < 5e-5:
                     patience = idx - 5
                     break

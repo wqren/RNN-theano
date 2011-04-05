@@ -51,7 +51,9 @@ class forget_state(theano.Op):
 
     def make_node(self, idx):
         input_seq = TT.tensor3( name = 'input', dtype = self.dtype)
+        input_seq.tag.shape = [ self.T, self.n_ins, self.batch_size ]
         target    = TT.tensor3( name = 'target', dtype = self.dtype)
+        target.tag.shape = [ self.T, self.n_ins, self.batch_size ]
         return theano.Apply(self, [idx], [input_seq, target])
 
     def __str__(self):
