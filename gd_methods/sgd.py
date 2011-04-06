@@ -28,7 +28,11 @@ def sgd(parameters,cost=None,gradients=None,
             updates[param] = param - scale * lr * mparam
             updates[mparam] = mparam*momentum + (1.-momentum)*grad
         else:
-            updates[param] =  param - scale*lr * grad
+            #if param.name :
+            #    updates[param] =  param -\
+            #    scale*lr*theano.printing.Print('grad_%s'%str(param.name))(grad)
+            #else:
+            updates[param] = param - scale*lr*grad
 
     return updates, None
 
